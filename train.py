@@ -6,12 +6,11 @@ from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, transforms
 from efficientnet_pytorch import EfficientNet
 
-# Semente para reprodutibilidade
 SEED = 42
 random.seed(SEED); torch.manual_seed(SEED); torch.cuda.manual_seed_all(SEED)
 
 # ─────────────────────────────────────────────────────────────
-# 1 ▪ Transformações de imagem (augmentações e normalização)
+# 1 ▪ Transformações de imagem
 # ─────────────────────────────────────────────────────────────
 transform_train = transforms.Compose([
     transforms.RandomResizedCrop(224, scale=(0.85, 1.0)),
@@ -32,11 +31,11 @@ transform_val = transforms.Compose([
 ])
 
 # ─────────────────────────────────────────────────────────────
-# 2 ▪ Função genérica de treinamento
+# 2 ▪ Função de treinamento
 # ─────────────────────────────────────────────────────────────
 def _treinar_modelo(data_dir, batch, epochs, pth_out, tag):
     train_dir = os.path.join(data_dir, "train")
-    val_dir   = os.path.join(data_dir, "test")  # validação será o test/
+    val_dir   = os.path.join(data_dir, "val")
 
     ds_tr = datasets.ImageFolder(train_dir, transform=transform_train)
     ds_va = datasets.ImageFolder(val_dir,   transform=transform_val)
@@ -71,7 +70,7 @@ def _treinar_modelo(data_dir, batch, epochs, pth_out, tag):
         return 0.5 * (1 + math.cos(math.pi * prog))
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
-    # EMA (Exponential Moving Average)
+    # EMA
     ema_decay = 0.999
     ema = {k: v.detach().clone() for k, v in model.state_dict().items() if v.dtype.is_floating_point}
 
@@ -96,7 +95,6 @@ def _treinar_modelo(data_dir, batch, epochs, pth_out, tag):
             scaler.update()
             scheduler.step()
 
-            # EMA update
             with torch.no_grad():
                 for k, v in model.state_dict().items():
                     if v.dtype.is_floating_point:
@@ -137,12 +135,12 @@ def _treinar_modelo(data_dir, batch, epochs, pth_out, tag):
     return model
 
 # ─────────────────────────────────────────────────────────────
-# 3 ▪ Chamada principal para treinar o classificador de Covid
+# 3 ▪ Execução do treinamento para pneumonia
 # ─────────────────────────────────────────────────────────────
-def treinar_modelo_covid(
-    data_dir='dataset', batch=16, epochs=20,
-    pth='model/model_covid.pth'):
-    _treinar_modelo(data_dir, batch, epochs, pth, tag='COVID')
+def treinar_modelo_pneumonia(
+    data_dir='chest_xray', batch=16, epochs=20,
+    pth='model/model_pneumonia.pth'):
+    _treinar_modelo(data_dir, batch, epochs, pth, tag='PNEUMONIA')
 
 if __name__ == '__main__':
-    treinar_modelo_covid()
+    treinar_modelo_pneumonia()
